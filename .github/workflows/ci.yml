@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    paths-ignore:
+      - "**/*.md"
+      - '**/*.txt'
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - '**/*.txt'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.event_name  }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install build-essential wget libcurl4-openssl-dev mingw-w64 mingw-w64-x86-64-dev
+
+    - name: Download curl for Windows
+      run: wget https://curl.se/windows/dl-8.8.0_3/curl-8.8.0_3-win64-mingw.zip -O curl-win64-mingw.zip
+
+    - name: Extract curl for Windows
+      run: unzip curl-win64-mingw.zip -d curl-win64-mingw
+
+    - name: Build Linux
+      run: |
+        make
+
+    - name: Build Win64
+      run: |
+        export CURL_PATH=curl-win64-mingw      
+        make -f Makefile.win
+
+    - name: Prepare artifacts
+      run: |
+        mkdir fetchpkg-win64
+        cp *.exe fetchpkg-win64/
+        cp curl-win64-mingw/bin/libcurl.dll fetchpkg-win64/
+
+    - name: Upload Linux
+      uses: actions/upload-artifact@v3
+      with:
+        name: Linux
+        path: ./fetchpkg
+        if-no-files-found: error
+
+    - name: Upload Win64
+      uses: actions/upload-artifact@v3
+      with:
+        name: Win64
+        path: fetchpkg-win64/
+        if-no-files-found: error
