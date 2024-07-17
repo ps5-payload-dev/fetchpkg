@@ -32,7 +32,7 @@ jobs:
       run: wget https://curl.se/windows/dl-8.8.0_3/curl-8.8.0_3-win64-mingw.zip -O curl-win64-mingw.zip
 
     - name: Extract curl for Windows
-      run: unzip curl-win64-mingw.zip -d curl-win64-mingw
+      run: unzip curl-win64-mingw.zip
 
     - name: Build Linux
       run: |
@@ -40,14 +40,14 @@ jobs:
 
     - name: Build Win64
       run: |
-        export CURL_PATH=curl-win64-mingw      
+        export CURL_PATH=curl-8.8.0_3-win64-mingw
         make -f Makefile.win
 
     - name: Prepare artifacts
       run: |
         mkdir fetchpkg-win64
         cp *.exe fetchpkg-win64/
-        cp curl-win64-mingw/bin/libcurl.dll fetchpkg-win64/
+        cp curl-8.8.0_3-win64-mingw/bin/libcurl-x64.dll fetchpkg-win64/
 
     - name: Upload Linux
       uses: actions/upload-artifact@v3
