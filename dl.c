@@ -24,6 +24,31 @@ along with this program; see the file COPYING. If not, see
 #include "parson.h"
 
 
+static const char cacert[] = "-----BEGIN CERTIFICATE-----\n"\
+"MIID0jCCArqgAwIBAgIBADANBgkqhkiG9w0BAQUFADBUMQswCQYDVQQGEwJKUDEp\n"\
+"MCcGA1UEChMgU29ueSBDb21wdXRlciBFbnRlcnRhaW5tZW50IEluYy4xGjAYBgNV\n"\
+"BAMTEVNDRUkgRE5BUyBSb290IDA1MB4XDTA0MDcxMjA5MDExOVoXDTM3MTIwNjA5\n"\
+"MDExOVowVDELMAkGA1UEBhMCSlAxKTAnBgNVBAoTIFNvbnkgQ29tcHV0ZXIgRW50\n"\
+"ZXJ0YWlubWVudCBJbmMuMRowGAYDVQQDExFTQ0VJIEROQVMgUm9vdCAwNTCCASIw\n"\
+"DQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANmPeza8PwCqlI7esOGIkoSESnIN\n"\
+"g72ZD3Ut63jy7SdothPIvGBqVZWYkIpqJYJd1I4Nh//IpXQCQL0PnJLrh9BBeowq\n"\
+"Muf5NNq3Us80Ihiu9CvNEAEO18g3OFV1TYdSwQ5zUsk33OUeI7h4aBPDVcZXYeHt\n"\
+"dbPLqe4K8igian5prrAD5S6h28t8aAm+qMWRo+bW25B/841XwDGBP7/IxZv8Yoio\n"\
+"rCo80CVYe6lGoU08eeqQiaHI5zAF281DWZSoVfLjJUEWmEnxqr8aOhszRGePi+Ei\n"\
+"7UQjHDuZX9rLhDI1zAND+BA259tn/iwOqVXe20OccJllHJcG4Ecmd98f5qMCAwEA\n"\
+"AaOBrjCBqzAdBgNVHQ4EFgQUxlahM1tPzoN3YgVEhm0gV7Wv2twwfAYDVR0jBHUw\n"\
+"c4AUxlahM1tPzoN3YgVEhm0gV7Wv2tyhWKRWMFQxCzAJBgNVBAYTAkpQMSkwJwYD\n"\
+"VQQKEyBTb255IENvbXB1dGVyIEVudGVydGFpbm1lbnQgSW5jLjEaMBgGA1UEAxMR\n"\
+"U0NFSSBETkFTIFJvb3QgMDWCAQAwDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQUF\n"\
+"AAOCAQEACZPihjwXA27wJ03tEKcHAeFLi8aBw2ysH4GwuH1dWb3UpuznWOB0iQT1\n"\
+"wQocnEFYCJx5XFEnj4aLWpSHLEq/sSO+my+aPoTEsy20ajF+YLYZm0bZxH50CJYh\n"\
+"rkET4C2aC0XvhGp9k1JQ1o0W6+cFT5LTlXapsq8Btt31t+XDPX7RqGV4WGekt3hM\n"\
+"T7xRc7JWXdAQijIrbYi8mtbM07KEGnPU6IT8C47+0mSurpwLOoWL1tPgo6ePpLNi\n"\
+"c4quUMgh9RXVjeTyXOMmyYdeUm2gt7qErvQONli+6Epmhm0A2khpIMHSpQjTE8gV\n"\
+"rZp42a6+zg1iYy2vFBOmiQ17GRUl0A==\n"\
+"-----END CERTIFICATE-----\n\0";
+
+
 /**
  *
  **/
@@ -110,6 +135,8 @@ dl_package_write(void *ptr, size_t length, size_t nmemb, void *ctx) {
  **/
 static int
 dl_fetch(const char* url, dl_data_write_t* cb, void* ctx) {
+  char buf[CURL_ERROR_SIZE];
+  struct curl_blob ca = {0};
   const char* proxy;
   int error = 0;
   CURL *curl;
@@ -120,22 +147,28 @@ dl_fetch(const char* url, dl_data_write_t* cb, void* ctx) {
     return -1;
   }
 
+  ca.data = (void*)cacert;
+  ca.len = strlen(cacert);
+  ca.flags = CURL_BLOB_COPY;
+
   curl_easy_setopt(curl, CURLOPT_URL, url);
+  curl_easy_setopt(curl, CURLOPT_CAINFO_BLOB, &ca);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, cb);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, ctx);
   curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
   curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+  curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, buf);
 
   if((proxy=getenv("CURL_PROXY"))) {
     curl_easy_setopt(curl, CURLOPT_PROXY, proxy);
   }
 
-  if(curl_easy_perform(curl) != CURLE_OK) {
-    fprintf(stderr, "dl_fetch: curl_easy_perform() failed\n");
+  if((error=curl_easy_perform(curl))) {
+    fprintf(stderr, "curl_easy_perform: %s\n", buf);
     error = -1;
   }
+
   curl_easy_cleanup(curl);
   curl_global_cleanup();
 

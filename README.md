@@ -27,15 +27,6 @@ Welcome to shsrv.elf running on...
 /$ /data/fetchpkg.elf -p http://proxy:8080 -o /mnt/usb0/temp.pkg URL
 ```
 
-## Limitations
-Most PS4 updates seems to be hosted via HTTP, while PS5 updates are typically
-HTTPS. Unfortunately, there is currently a bug when combining the latest versions 
-of cURL with the cryptographic library mbedtls used by the PS5 port of fetchpkg, 
-see https://github.com/curl/curl/issues/13653 
-and https://github.com/Mbed-TLS/mbedtls/issues/9210
-for more details. Consequently, the current PS5 port cannot download game updates 
-that are hosted on HTTPS servers.
-
 ## Building
 See the [gihub CI action workflow][workflow].
 
