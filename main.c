@@ -118,6 +118,8 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  printf("Starting download...\n");
+
   strncpy(url, argv[optind], sizeof(url));
   if(endswith(url, "_sc.pkg") || endswith(url, "-DP.pkg")) {
     url[strlen(url)-7] = 0;
@@ -136,5 +138,10 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  return dl_package(url, output, on_progress, (void*)basename(output));
+  if(dl_package(url, output, on_progress, (void*)basename(output))) {
+    return -1;
+  }
+
+  puts("\nDone");
+  return 0;
 }
