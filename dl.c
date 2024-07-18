@@ -20,8 +20,8 @@ along with this program; see the file COPYING. If not, see
 
 #include <curl/curl.h>
 
-#include "parson.h"
 #include "dl.h"
+#include "parson.h"
 
 
 /**
