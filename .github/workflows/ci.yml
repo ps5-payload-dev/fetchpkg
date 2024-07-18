@@ -26,13 +26,18 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install build-essential wget libcurl4-openssl-dev mingw-w64 mingw-w64-x86-64-dev
+        sudo apt install build-essential clang-15 lld-15 wget libcurl4-openssl-dev mingw-w64 mingw-w64-x86-64-dev
 
-    - name: Download curl for Windows
-      run: wget https://curl.se/windows/dl-8.8.0_3/curl-8.8.0_3-win64-mingw.zip -O curl-win64-mingw.zip
+    - name: Download cURL for Windows
+      run: wget https://curl.se/windows/dl-8.8.0_3/curl-8.8.0_3-win64-mingw.zip
 
     - name: Extract curl for Windows
-      run: unzip curl-win64-mingw.zip
+      run: unzip curl-8.8.0_3-win64-mingw.zip
+
+    - name: Install toolchain for PS5
+      run: |
+        wget https://github.com/ps5-payload-dev/pacbrew-repo/releases/download/v0.4/ps5-payload-dev.tar.gz
+        sudo tar xf ps5-payload-dev.tar.gz -C /
 
     - name: Build Linux
       run: |
@@ -42,6 +47,11 @@ jobs:
       run: |
         export CURL_PATH=curl-8.8.0_3-win64-mingw
         make -f Makefile.win
+
+    - name: Build PS5
+      run: |
+        export PS5_PAYLOAD_SDK=/opt/pacbrew/ps5/payload-sdk
+        make -f Makefile.ps5
 
     - name: Prepare artifacts
       run: |
@@ -61,4 +71,11 @@ jobs:
       with:
         name: Win64
         path: fetchpkg-win64/
+        if-no-files-found: error
+
+    - name: Upload PS5
+      uses: actions/upload-artifact@v3
+      with:
+        name: PS5
+        path: ./fetchpkg.elf
         if-no-files-found: error
