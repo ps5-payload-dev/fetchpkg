@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
       break;
 
     case 'o':
-      strncpy(output, optarg, sizeof(output));
+      strncpy(output, optarg, sizeof(output)-1);
       break;
 
     default:
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
 
   printf("Starting download...\n");
 
-  strncpy(url, argv[optind], sizeof(url));
+  strncpy(url, argv[optind], sizeof(url)-1);
   if(endswith(url, "_sc.pkg") || endswith(url, "-DP.pkg")) {
     url[strlen(url)-7] = 0;
     strcat(url, ".json");
