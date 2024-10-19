@@ -26,7 +26,7 @@ EXE := fetchpkg.exe
 
 all: $(EXE)
 
-$(EXE): main.c dl.c parson.c
+$(EXE): main.c dl.c parson.c sha256.c sha1.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDADD)
 
 clean:

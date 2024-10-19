@@ -23,13 +23,15 @@ else
 endif
 
 CFLAGS := -O1 -Wall -Werror -Wno-unreachable-code-generic-assoc
-LDADD := `$(PS5_SYSROOT)/bin/curl-config --cflags --libs`
+CFLAGS += `$(PS5_PAYLOAD_SDK)/bin/prospero-curl-config --cflags`
+
+LDADD := `$(PS5_PAYLOAD_SDK)/bin/prospero-curl-config --libs`
 
 ELF := fetchpkg.elf
 
 all: $(ELF)
 
-$(ELF): main.c dl.c parson.c
+$(ELF): main.c dl.c parson.c sha256.c sha1.c
 	$(CC) $(CFLAGS) -o $@ $(LDADD) $^
 
 clean:

@@ -15,6 +15,7 @@ along with this program; see the file COPYING. If not, see
 <http://www.gnu.org/licenses/>.  */
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 
@@ -22,6 +23,8 @@ along with this program; see the file COPYING. If not, see
 
 #include "dl.h"
 #include "parson.h"
+#include "sha1.h"
+#include "sha256.h"
 
 
 static const char cacert[] = "-----BEGIN CERTIFICATE-----\n"\
@@ -73,6 +76,9 @@ typedef struct dl_package_state {
   int   error;
   size_t remaining;
 
+  SHA256_CTX* sha256;
+  SHA1_CTX* sha1;
+
   struct {
     dl_progress_t *cb;
     void* ctx;
@@ -111,6 +117,13 @@ dl_package_write(void *ptr, size_t length, size_t nmemb, void *ctx) {
 
   if(!(n=fwrite(ptr, length, nmemb, state->file))) {
     state->error = ferror(state->file);
+  }
+
+  if(state->sha1) {
+    sha1_update(state->sha1, ptr, n);
+  }
+  if(state->sha256) {
+    sha256_update(state->sha256, ptr, n);
   }
 
   if(n <= state->remaining) {
@@ -204,7 +217,22 @@ dl_manifest(const char *url) {
  *
  **/
 static int
-dl_package_piece(dl_package_state_t* state, const char *url) {
+dl_package_piece(dl_package_state_t* state, const char *url, uint8_t* hash,
+		 size_t hash_size) {
+  SHA256_CTX sha256;
+  SHA1_CTX sha1;
+
+  state->sha1 = 0;
+  state->sha256 = 0;
+
+  if(hash_size == SHA256_BLOCK_SIZE) {
+    sha256_init(&sha256);
+    state->sha256 = &sha256;
+  } else if(hash_size == SHA1_BLOCK_SIZE) {
+    sha1_init(&sha1);
+    state->sha1 = &sha1;
+  }
+
   if(dl_fetch(url, dl_package_write, state)) {
     return -1;
   }
@@ -212,6 +240,37 @@ dl_package_piece(dl_package_state_t* state, const char *url) {
   if(state->error) {
     fprintf(stderr, "dl_package_piece: %s\n", strerror(state->error));
     return state->error;
+  }
+
+  if(hash_size == SHA256_BLOCK_SIZE) {
+    sha256_final(&sha256, hash);
+  } else if(hash_size == SHA1_BLOCK_SIZE) {
+    sha1_final(&sha1, hash);
+  }
+
+  return 0;
+}
+
+static void
+hexdump(const void *bin, size_t size) {
+  const char* str = (const char*)bin;
+
+  printf("0x");
+  for(int i=0; i<size; i++) {
+    printf("%02x", str[i]&0xff);
+  }
+  puts("");
+}
+
+
+static int
+hex2bin(const char* s, uint8_t* b, size_t n) {
+  size_t len = strlen(s);
+
+  for(int i=0; i<len/2 && i<n; i++) {
+    if(sscanf(s + 2*i, "%02hhx", &b[i]) != 1) {
+      return -1;
+    }
   }
 
   return 0;
@@ -224,11 +283,14 @@ dl_package_piece(dl_package_state_t* state, const char *url) {
 int
 dl_package(const char* manifest_url, const char* path, dl_progress_t* cb,
 	   void* ctx) {
+  uint8_t expected_hash[SHA256_BLOCK_SIZE];
+  uint8_t actual_hash[SHA256_BLOCK_SIZE];
   dl_package_state_t state = {0};
   JSON_Object *manifest = 0;
   JSON_Array *pieces = 0;
   JSON_Object *piece = 0;
   JSON_Value *val = 0;
+  const char* hash;
   const char* url;
   int error = 0;
 
@@ -253,7 +315,21 @@ dl_package(const char* manifest_url, const char* path, dl_progress_t* cb,
   for(int i=0; i<json_array_get_count(pieces) && !error; i++) {
     piece = json_array_get_object(pieces, i);
     url = json_object_get_string(piece, "url");
-    error = dl_package_piece(&state, url);
+    hash = json_object_get_string(piece, "hashValue");
+
+    memset(expected_hash, 0, sizeof(expected_hash));
+    memset(actual_hash, 0, sizeof(actual_hash));
+    hex2bin(hash, expected_hash, sizeof(expected_hash));
+
+    error = dl_package_piece(&state, url, actual_hash, strlen(hash)/2);
+
+    if(memcmp(expected_hash, actual_hash, strlen(hash)/2)) {
+      puts("\nWARNING: inconsistent piece hash");
+      printf("  actual: ");
+      hexdump(actual_hash, strlen(hash)/2);
+      printf("  expected: ");
+      hexdump(expected_hash, strlen(hash)/2);
+    }
   }
 
   if(state.file) {

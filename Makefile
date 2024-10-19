@@ -20,7 +20,7 @@ LDADD  := -lcurl
 ELF := fetchpkg
 all: $(ELF)
 
-$(ELF): main.c dl.c parson.c
+$(ELF): main.c dl.c parson.c sha256.c sha1.c
 	$(CC) -o $@ $^ $(LDADD)
 
 clean:
