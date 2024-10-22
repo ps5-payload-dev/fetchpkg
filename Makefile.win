@@ -18,7 +18,7 @@ CC := x86_64-w64-mingw32-gcc
 
 CURL_PATH ?= curl-8.8.0_3-win64-mingw
 
-CFLAGS := -O2 -Wall
+CFLAGS := -O2 -Wall -D_FILE_OFFSET_BITS=64
 CFLAGS += -I$(CURL_PATH)/include  -L$(CURL_PATH)/lib
 LDADD  := -lcurl -lws2_32 -lwinmm
 
