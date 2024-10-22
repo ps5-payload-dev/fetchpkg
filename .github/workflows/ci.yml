@@ -36,7 +36,7 @@ jobs:
 
     - name: Install toolchain for PS5
       run: |
-        wget https://github.com/ps5-payload-dev/pacbrew-repo/releases/download/v0.5/ps5-payload-dev.tar.gz
+        wget https://github.com/ps5-payload-dev/pacbrew-repo/releases/download/v0.12/ps5-payload-dev.tar.gz
         sudo tar xf ps5-payload-dev.tar.gz -C /
 
     - name: Build Linux
