@@ -50,7 +50,7 @@ jobs:
 
     - name: Build PS5
       run: |
-        export PS5_PAYLOAD_SDK=/opt/pacbrew/ps5/payload-sdk
+        export PS5_PAYLOAD_SDK=/opt/ps5-payload-sdk
         make -f Makefile.ps5
 
     - name: Prepare artifacts
