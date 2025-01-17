@@ -66,10 +66,10 @@ jobs:
         path: ./fetchpkg
         if-no-files-found: error
 
-    - name: Upload Win64
+    - name: Upload Windows
       uses: actions/upload-artifact@v3
       with:
-        name: Win64-x86_64
+        name: Win-x86_64
         path: fetchpkg-win64/
         if-no-files-found: error
 
