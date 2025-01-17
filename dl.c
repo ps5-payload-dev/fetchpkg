@@ -134,7 +134,7 @@ dl_package_write(void *ptr, size_t length, size_t nmemb, void *ctx) {
 
   if(state->on_progress.cb &&
      state->on_progress.cb(state->on_progress.ctx,
-			   ftell(state->file),
+			   ftello(state->file),
 			   state->remaining)) {
     return 0;
   }
