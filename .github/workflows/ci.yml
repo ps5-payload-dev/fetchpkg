@@ -62,14 +62,14 @@ jobs:
     - name: Upload Linux
       uses: actions/upload-artifact@v3
       with:
-        name: Linux
+        name: Linux-x86_64
         path: ./fetchpkg
         if-no-files-found: error
 
     - name: Upload Win64
       uses: actions/upload-artifact@v3
       with:
-        name: Win64
+        name: Win64-x86_64
         path: fetchpkg-win64/
         if-no-files-found: error
 
