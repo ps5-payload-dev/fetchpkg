@@ -14,14 +14,14 @@
 # along with this program; see the file COPYING. If not see
 # <http://www.gnu.org/licenses/>.
 
-CFLAGS := --O2 -Wall -Werror -static
+CFLAGS := -O2 -Wall -Werror
 LDADD  := -lcurl
 
 ELF := fetchpkg
 all: $(ELF)
 
 $(ELF): main.c dl.c parson.c sha256.c sha1.c
-	$(CC) -o $@ $^ $(LDADD)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDADD)
 
 clean:
 	rm -f $(ELF)
