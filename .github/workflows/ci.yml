@@ -26,7 +26,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install build-essential clang-15 lld-15 wget libcurl4-openssl-dev mingw-w64 mingw-w64-x86-64-dev
+        sudo apt install build-essential clang-18 lld-18 wget libcurl4-openssl-dev mingw-w64 mingw-w64-x86-64-dev
 
     - name: Download cURL for Windows
       run: wget https://curl.se/windows/dl-8.8.0_3/curl-8.8.0_3-win64-mingw.zip
