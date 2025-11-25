@@ -24,9 +24,6 @@ along with this program; see the file COPYING. If not, see
 #include "dl.h"
 
 
-#define MiB(x) (x / (1024*1024))
-
-
 /**
  *
  **/
@@ -77,10 +74,21 @@ on_progress(void* ctx, size_t written, size_t remaining) {
 
   if(prev_time < now) {
     double progress = 100.0 * written / (written + remaining);
-    double speed = MiB((double)written / (now - start_time));
+    double speed = written / (now - start_time);
+    int eta = remaining / speed;
+    int h = eta / 3600;
+    int m = (eta % 3600) / 60;
+    int s = eta % 60;
 
-    fprintf(stdout, "filename: %s | progress: %6.2f%% | avg speed: %6.2f MiB/s\r",
-	    filename, progress, speed);
+    fprintf(stdout, "filename: %s | progress: %6.2f%% | speed: %6.2f MBit/s | eta: ",
+	    filename, progress, 8 * speed / (1024*1024));
+    if(h) {
+      fprintf(stdout, "%dh", h);
+    }
+    if(m || h) {
+      fprintf(stdout, "%dm", m);
+    }
+    fprintf(stdout, "%ds      \r", s);
     fflush(stdout);
 
     prev_time = now;
