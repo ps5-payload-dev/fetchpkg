@@ -28,7 +28,7 @@ along with this program; see the file COPYING. If not, see
  *
  **/
 static const char*
-basename(const char *path) {
+pkg_basename(const char *path) {
   const char* ptr = path;
 
   while(path && *path) {
@@ -139,14 +139,14 @@ int main(int argc, char *argv[]) {
   }
 
   if(!output[0]) {
-    strcpy(output, basename(url));
+    strcpy(output, pkg_basename(url));
     if(endswith(output, ".json")) {
       output[strlen(output)-5] = 0;
       strcat(output, ".pkg");
     }
   }
 
-  if(dl_package(url, output, on_progress, (void*)basename(output))) {
+  if(dl_package(url, output, on_progress, (void*)pkg_basename(output))) {
     return -1;
   }
 
