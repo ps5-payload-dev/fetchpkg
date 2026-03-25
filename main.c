@@ -64,18 +64,21 @@ endswith(const char *str, const char* suffix) {
 static int
 on_progress(void* ctx, size_t written, size_t remaining) {
   const char* filename = (const char*)ctx;
+	static size_t start_written = 0;
   static time_t start_time = 0;
   static time_t prev_time = 0;
   time_t now = time(0);
 
   if(start_time == 0) {
     start_time = prev_time = now;
+		start_written = written;
   }
 
   if(prev_time < now) {
     double progress = 100.0 * written / (written + remaining);
-    double speed = written / (now - start_time);
-    int eta = remaining / speed;
+		double elapsed = now - start_time;
+		double speed = elapsed > 0 ? (written - start_written) / elapsed : 0;
+		int eta = speed > 0 ? remaining / speed : 0;
     int h = eta / 3600;
     int m = (eta % 3600) / 60;
     int s = eta % 60;

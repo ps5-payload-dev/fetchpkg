@@ -293,6 +293,8 @@ dl_package(const char* manifest_url, const char* path, dl_progress_t* cb,
   const char* hash;
   const char* url;
   int error = 0;
+  size_t existing = 0;
+  FILE *f;
 
   state.on_progress.cb = cb;
   state.on_progress.ctx = ctx;
@@ -306,9 +308,17 @@ dl_package(const char* manifest_url, const char* path, dl_progress_t* cb,
     fprintf(stderr, "dl_package: malformed manifest\n");
     error = -1;
 
-  } else if(!(state.file=fopen(path, "wb"))) {
-    fprintf(stderr, "dl_package: %s\n", strerror(errno));
-    error = -1;
+  } else {
+    if ((f = fopen(path, "rb"))) {
+      fseeko(f, 0, SEEK_END);
+      existing = ftello(f);
+      fclose(f);
+    }
+
+		if (!(state.file = fopen(path, existing > 0 ? "ab" : "wb"))) {
+			fprintf(stderr, "dl_package: %s\n", strerror(errno));
+			error = -1;
+		}
   }
 
   state.remaining = json_object_get_number(manifest, "originalFileSize");
@@ -316,6 +326,13 @@ dl_package(const char* manifest_url, const char* path, dl_progress_t* cb,
     piece = json_array_get_object(pieces, i);
     url = json_object_get_string(piece, "url");
     hash = json_object_get_string(piece, "hashValue");
+		size_t piece_size = (size_t)json_object_get_number(piece, "fileSize");
+
+		if (existing >= piece_size) {
+			existing -= piece_size;
+			state.remaining -= piece_size;
+			continue;
+		}
 
     memset(expected_hash, 0, sizeof(expected_hash));
     memset(actual_hash, 0, sizeof(actual_hash));
