@@ -334,6 +334,13 @@ dl_package(const char* manifest_url, const char* path, dl_progress_t* cb,
 			continue;
 		}
 
+		if (existing > 0) {
+			fseeko(state.file, -existing, SEEK_END);
+			ftruncate(fileno(state.file), ftello(state.file));
+			state.remaining += existing;
+			existing = 0;
+		}
+
     memset(expected_hash, 0, sizeof(expected_hash));
     memset(actual_hash, 0, sizeof(actual_hash));
     hex2bin(hash, expected_hash, sizeof(expected_hash));
