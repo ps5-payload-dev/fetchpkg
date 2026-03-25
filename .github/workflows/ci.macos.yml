@@ -1,0 +1,33 @@
+name: CI macOS
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: brew install curl
+
+    - name: Build macOS
+      run: make -f Makefile.macos
+
+    - name: Upload macOS
+      uses: actions/upload-artifact@v4
+      with:
+        name: macOS-arm64
+        path: ./fetchpkg
+        if-no-files-found: error
