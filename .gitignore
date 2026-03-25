@@ -2,3 +2,4 @@
 *.elf
 *.exe
 fetchpkg
+.DS_Store
