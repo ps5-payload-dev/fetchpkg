@@ -3,3 +3,4 @@
 *.exe
 fetchpkg
 .DS_Store
+build/
