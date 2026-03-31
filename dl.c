@@ -18,6 +18,7 @@ along with this program; see the file COPYING. If not, see
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include <curl/curl.h>
 
@@ -147,7 +148,7 @@ dl_package_write(void *ptr, size_t length, size_t nmemb, void *ctx) {
  *
  **/
 static int
-dl_fetch(const char* url, dl_data_write_t* cb, void* ctx) {
+dl_fetch(const char* url, off_t offset, dl_data_write_t* cb, void* ctx) {
   char buf[CURL_ERROR_SIZE];
   struct curl_blob ca = {0};
   const char* proxy;
@@ -172,6 +173,15 @@ dl_fetch(const char* url, dl_data_write_t* cb, void* ctx) {
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
   curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
   curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, buf);
+  curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1000L);
+  curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
+
+  if(offset > 0) {
+    char range[64];
+    snprintf(range, sizeof(range), "%lld-", (long long)offset);
+    curl_easy_setopt(curl, CURLOPT_RANGE, range);
+    fprintf(stderr, "\nResuming piece at byte offset %lld\n", (long long)offset);
+  }
 
   if((proxy=getenv("CURL_PROXY"))) {
     curl_easy_setopt(curl, CURLOPT_PROXY, proxy);
@@ -197,7 +207,7 @@ dl_manifest(const char *url) {
   dl_manifest_state_t state = {0};
   JSON_Value *json = 0;
 
-  if(!dl_fetch(url, dl_manifest_write, &state)) {
+  if(!dl_fetch(url, 0, dl_manifest_write, &state)) {
     if(state.error) {
       fprintf(stderr, "dl_manifest: %s\n", strerror(state.error));
     } else if(!(json=json_parse_string(state.data))) {
@@ -221,6 +231,10 @@ dl_package_piece(dl_package_state_t* state, const char *url, uint8_t* hash,
 		 size_t hash_size) {
   SHA256_CTX sha256;
   SHA1_CTX sha1;
+  off_t start_pos = ftello(state->file);
+  off_t offset = 0;
+  int retries = 0;
+  int max_retries = 20;
 
   state->sha1 = 0;
   state->sha256 = 0;
@@ -233,8 +247,25 @@ dl_package_piece(dl_package_state_t* state, const char *url, uint8_t* hash,
     state->sha1 = &sha1;
   }
 
-  if(dl_fetch(url, dl_package_write, state)) {
-    return -1;
+  while(retries <= max_retries) {
+    if(!dl_fetch(url, offset, dl_package_write, state)) {
+      break;
+    }
+
+    state->error = 0;
+    offset = ftello(state->file) - start_pos;
+    retries++;
+
+    fprintf(stderr, "\nConnection lost after %lld bytes into piece (attempt %d/%d)\n",
+            (long long)offset, retries, max_retries);
+
+    if(retries > max_retries) {
+      fprintf(stderr, "Max retries reached, giving up on piece\n");
+      return -1;
+    }
+
+    fprintf(stderr, "Retrying in 30 seconds...\n");
+    sleep(30);
   }
 
   if(state->error) {
@@ -293,6 +324,8 @@ dl_package(const char* manifest_url, const char* path, dl_progress_t* cb,
   const char* hash;
   const char* url;
   int error = 0;
+  size_t existing = 0;
+  FILE *f;
 
   state.on_progress.cb = cb;
   state.on_progress.ctx = ctx;
@@ -306,9 +339,17 @@ dl_package(const char* manifest_url, const char* path, dl_progress_t* cb,
     fprintf(stderr, "dl_package: malformed manifest\n");
     error = -1;
 
-  } else if(!(state.file=fopen(path, "wb"))) {
-    fprintf(stderr, "dl_package: %s\n", strerror(errno));
-    error = -1;
+  } else {
+    if ((f = fopen(path, "rb"))) {
+      fseeko(f, 0, SEEK_END);
+      existing = ftello(f);
+      fclose(f);
+    }
+
+		if (!(state.file = fopen(path, existing > 0 ? "ab" : "wb"))) {
+			fprintf(stderr, "dl_package: %s\n", strerror(errno));
+			error = -1;
+		}
   }
 
   state.remaining = json_object_get_number(manifest, "originalFileSize");
@@ -316,6 +357,21 @@ dl_package(const char* manifest_url, const char* path, dl_progress_t* cb,
     piece = json_array_get_object(pieces, i);
     url = json_object_get_string(piece, "url");
     hash = json_object_get_string(piece, "hashValue");
+		size_t piece_size = (size_t)json_object_get_number(piece, "fileSize");
+
+		if (existing >= piece_size) {
+			existing -= piece_size;
+			state.remaining -= piece_size;
+			continue;
+		}
+
+		if (existing > 0) {
+			fseeko(state.file, -existing, SEEK_END);
+			if (ftruncate(fileno(state.file), ftello(state.file)) != 0)
+				perror("ftruncate");
+			state.remaining += existing;
+			existing = 0;
+		}
 
     memset(expected_hash, 0, sizeof(expected_hash));
     memset(actual_hash, 0, sizeof(actual_hash));
