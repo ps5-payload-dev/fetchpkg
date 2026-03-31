@@ -367,7 +367,8 @@ dl_package(const char* manifest_url, const char* path, dl_progress_t* cb,
 
 		if (existing > 0) {
 			fseeko(state.file, -existing, SEEK_END);
-			ftruncate(fileno(state.file), ftello(state.file));
+			if (ftruncate(fileno(state.file), ftello(state.file)) != 0)
+				perror("ftruncate");
 			state.remaining += existing;
 			existing = 0;
 		}
